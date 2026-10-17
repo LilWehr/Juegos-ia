@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gran Torneo Sumo - 4 Jugadores</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Fredoka (Cartoon Arcade) & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --wood-dark: #4a2c18;
+            --wood-mid: #6e4226;
+            --wood-light: #a46843;
+            --parchment: #fdf5e6;
+            --parchment-border: #d8c3a5;
+            --sumo-red: #e63946;
+            --sumo-blue: #2563eb;
+            --sumo-green: #16a34a;
+            --sumo-yellow: #d97706;
+        }
+
+        body {
+            background-color: #3d2314;
+            background-image: 
+                radial-gradient(circle at 50% 35%, rgba(255, 215, 165, 0.16) 0%, transparent 70%),
+                repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 2px, transparent 2px, transparent 64px);
+            font-family: 'Inter', sans-serif;
+            color: #2d1a10;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .font-sumo {
+            font-family: 'Fredoka', sans-serif;
+            letter-spacing: 0.02em;
+        }
+
+        /* Estilo de Paneles de Madera y Pergamino Japonés */
+        .wood-panel {
+            background: linear-gradient(180deg, #6d4128 0%, #4e2e1b 100%);
+            border: 3px solid #8c5838;
+            box-shadow: 0 6px 0 #311b0e, 0 10px 20px rgba(0,0,0,0.4);
+            color: #fff8eb;
+        }
+
+        .parchment-card {
+            background: #fff9ed;
+            border: 3px solid #d4b483;
+            box-shadow: 0 4px 0 #b39262, 0 6px 12px rgba(0,0,0,0.18);
+            color: #3b2314;
+        }
+
+        /* Contenedor del Dojo */
+        .dojo-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 940px;
+            aspect-ratio: 16 / 10;
+            background: #7c4d30;
+            border: 6px solid #4a2813;
+            border-radius: 1.5rem;
+            box-shadow: 
+                0 10px 0 #2b1609,
+                0 20px 40px rgba(0, 0, 0, 0.55);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Botones estilo Arcade Tradicional */
+        .btn-dojo {
+            transition: all 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+        }
+
+        .btn-dojo:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35);
+        }
+
+        .btn-dojo:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+        }
+
+        /* Sacudida cuando chocan dos sumos pesados */
+        @keyframes sumoImpactShake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-6px, 5px) rotate(-0.5deg); }
+            40% { transform: translate(6px, -4px) rotate(0.5deg); }
+            60% { transform: translate(-4px, -3px) rotate(-0.3deg); }
+            80% { transform: translate(4px, 3px) rotate(0.3deg); }
+        }
+
+        .shake-dojo {
+            animation: sumoImpactShake 0.25s ease-in-out;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #eaddc5;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #9c744f;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 sm:p-4">
+
+    <!-- CABECERA DEL DOJO Y MARCADOR DE LOS 4 LUCHADORES -->
+    <header class="w-full max-w-[940px] flex flex-col gap-2 mb-1">
+        <!-- Barra Superior de Madera -->
+        <div class="wood-panel flex flex-wrap items-center justify-between gap-2 px-4 py-2 rounded-2xl">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-[#e63946] border-2 border-[#fff8eb] flex items-center justify-center shadow-md">
+                    <span class="font-sumo text-white text-lg font-bold">相撲</span>
+                </div>
+                <div>
+                    <h1 class="font-sumo text-lg sm:text-xl md:text-2xl font-bold tracking-wide text-[#ffedd5] drop-shadow">
+                        GRAN TORNEO SUMO
+                    </h1>
+                    <p id="modeSubheader" class="text-[11px] font-bold uppercase tracking-wider text-[#fcd34d]">
+                        TODOS CONTRA TODOS (1v1v1v1) • META: 5 VICTORIAS
+                    </p>
+                </div>
+            </div>
+
+            <!-- Indicador de estado del Dohyo (Anillo de Arena) -->
+            <div class="flex items-center gap-2 bg-[#361e10] border-2 border-[#8c5838] px-3 py-1 rounded-xl">
+                <i class="fas fa-circle-notch text-amber-400 text-xs"></i>
+                <span class="text-xs font-sumo text-amber-100">ANILLO DOHYŌ:</span>
+                <span id="shrinkTimerText" class="font-sumo text-sm font-bold text-amber-300">100%</span>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <button id="btnShareLink" title="Copiar enlace para amigos" class="btn-dojo bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-300 px-3 h-9 rounded-xl flex items-center gap-1.5 text-xs font-bold">
+                    <i class="fas fa-share-alt"></i>
+                    <span class="hidden md:inline">Compartir</span>
+                </button>
+                <button id="btnGithubHelp" title="Cómo subir a GitHub Pages" class="btn-dojo bg-amber-600 hover:bg-amber-500 text-white border-2 border-amber-300 px-3 h-9 rounded-xl flex items-center gap-1.5 text-xs font-bold">
+                    <i class="fab fa-github text-sm"></i>
+                    <span class="hidden sm:inline">GitHub / Controles</span>
+                </button>
+                <button id="btnSound" title="Activar/Silenciar Sonido" class="btn-dojo bg-[#8c5838] hover:bg-[#a16642] text-amber-100 border-2 border-[#c28d6b] w-9 h-9 rounded-xl flex items-center justify-center">
+                    <i id="iconSound" class="fas fa-volume-up text-sm"></i>
+                </button>
+                <button id="btnMenu" title="Configurar Torneo" class="btn-dojo bg-[#e63946] hover:bg-[#f04856] text-white border-2 border-rose-200 px-3 h-9 rounded-xl flex items-center gap-1.5 text-xs font-bold">
+                    <i class="fas fa-Sliders-h"></i>
+                    <span>Dojo / Sala</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tarjetas de los 4 Sumos -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <!-- J1: Sumo Rojo -->
+            <div class="parchment-card rounded-xl px-3 py-1.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-[#e63946] border border-red-900"></span>
+                        <span id="hudName0" class="font-sumo text-xs sm:text-sm font-bold text-[#b91c1c]">J1 (WASD)</span>
+                    </div>
+                    <span id="hudScore0" class="font-sumo text-xl font-bold text-[#7f1d1d]">0</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="text-[9px] font-bold uppercase text-amber-900/70">EMPUJE</span>
+                    <div class="flex-1 bg-[#e5d3b3] h-2 rounded-full overflow-hidden border border-[#c2a87d]">
+                        <div id="hudBoost0" class="bg-[#e63946] h-full w-full transition-all duration-75"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- J2: Sumo Azul -->
+            <div class="parchment-card rounded-xl px-3 py-1.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-[#2563eb] border border-blue-900"></span>
+                        <span id="hudName1" class="font-sumo text-xs sm:text-sm font-bold text-[#1d4ed8]">J2 (FLECHAS)</span>
+                    </div>
+                    <span id="hudScore1" class="font-sumo text-xl font-bold text-[#1e3a8a]">0</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="text-[9px] font-bold uppercase text-amber-900/70">EMPUJE</span>
+                    <div class="flex-1 bg-[#e5d3b3] h-2 rounded-full overflow-hidden border border-[#c2a87d]">
+                        <div id="hudBoost1" class="bg-[#2563eb] h-full w-full transition-all duration-75"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- J3: Sumo Verde -->
+            <div class="parchment-card rounded-xl px-3 py-1.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-[#16a34a] border border-green-900"></span>
+                        <span id="hudName2" class="font-sumo text-xs sm:text-sm font-bold text-[#15803d]">J3 (IJKL)</span>
+                    </div>
+                    <span id="hudScore2" class="font-sumo text-xl font-bold text-[#14532d]">0</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="text-[9px] font-bold uppercase text-amber-900/70">EMPUJE</span>
+                    <div class="flex-1 bg-[#e5d3b3] h-2 rounded-full overflow-hidden border border-[#c2a87d]">
+                        <div id="hudBoost2" class="bg-[#16a34a] h-full w-full transition-all duration-75"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- J4: Sumo Dorado -->
+            <div class="parchment-card rounded-xl px-3 py-1.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-[#f59e0b] border border-amber-900"></span>
+                        <span id="hudName3" class="font-sumo text-xs sm:text-sm font-bold text-[#b45309]">J4 (TFGH)</span>
+                    </div>
+                    <span id="hudScore3" class="font-sumo text-xl font-bold text-[#78350f]">0</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="text-[9px] font-bold uppercase text-amber-900/70">EMPUJE</span>
+                    <div class="flex-1 bg-[#e5d3b3] h-2 rounded-full overflow-hidden border border-[#c2a87d]">
+                        <div id="hudBoost3" class="bg-[#f59e0b] h-full w-full transition-all duration-75"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ÁREA CENTRAL DEL DOJO (CANVAS) -->
+    <main class="w-full flex-1 flex flex-col items-center justify-center my-1">
+        <div id="dojoContainer" class="dojo-wrapper">
+            <canvas id="sumoCanvas"></canvas>
+
+            <!-- NOTIFICACIÓN TOAST -->
+            <div id="toastMsg" class="absolute top-4 left-1/2 -translate-x-1/2 bg-[#2d1a10] border-2 border-amber-400 text-amber-100 px-4 py-2 rounded-xl font-sumo text-xs sm:text-sm shadow-xl pointer-events-none opacity-0 transition-opacity duration-300 z-30 flex items-center gap-2">
+                <i class="fas fa-check-circle text-emerald-400"></i>
+                <span id="toastText">¡Enlace copiado al portapapeles!</span>
+            </div>
+
+            <!-- CARTEL DE GANADOR DE LA RONDA (ESTILO PERGAMINO JAPONÉS) -->
+            <div id="roundBanner" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-200 z-10">
+                <div class="parchment-card border-4 border-[#8c2d19] px-8 py-5 rounded-3xl shadow-2xl text-center transform scale-105">
+                    <div id="roundSubText" class="font-sumo text-xs sm:text-sm uppercase tracking-widest text-[#8c2d19] font-bold mb-1">¡HAKKEYOI! FIN DEL COMBATE</div>
+                    <div id="roundWinnerText" class="font-sumo text-3xl sm:text-5xl font-bold text-[#2d1a10]">¡RIKISHI ROJO GANA!</div>
+                </div>
+            </div>
+
+            <!-- MODAL DE CONFIGURACIÓN DEL GRAN TORNEO -->
+            <div id="lobbyOverlay" class="absolute inset-0 bg-black/65 backdrop-blur-sm flex flex-col items-center justify-center p-3 sm:p-5 z-20 transition-opacity duration-300 overflow-y-auto">
+                <div class="max-w-xl w-full parchment-card border-4 border-[#6e4226] rounded-3xl p-4 sm:p-6 text-center my-auto">
+                    <div id="lobbyBadge" class="inline-block px-3 py-0.5 rounded-full text-xs font-sumo uppercase bg-[#e63946]/15 text-[#b91c1c] border border-[#e63946]/30 mb-1">
+                        DOJO TRADICIONAL • 4 JUGADORES
+                    </div>
+                    <h2 id="lobbyTitle" class="font-sumo text-2xl sm:text-3xl font-bold text-[#3b2314] mb-1">
+                        GRAN TORNEO DE SUMO
+                    </h2>
+                    <p id="lobbySubtitle" class="text-[#6e472b] text-xs sm:text-sm mb-4 font-medium">
+                        ¡Empuja a los demás luchadores fuera del círculo de paja usando tu barriga y manotazos <i>Tsuppari</i>!
+                    </p>
+
+                    <!-- Selector de Modo: 1v1v1v1 o 2v2 -->
+                    <div class="mb-4 text-left">
+                        <label class="block text-xs font-sumo uppercase text-[#5c3a21] mb-1.5 font-bold">Modalidad de Combate</label>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <button id="btnModeFFA" class="btn-dojo bg-[#e63946] text-white border-2 border-[#991b1b] py-2.5 px-3 rounded-xl font-sumo text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
+                                <i class="fas fa-crown text-amber-200"></i> 1v1v1v1 (Todos vs Todos)
+                            </button>
+                            <button id="btnModeTeams" class="btn-dojo bg-[#eaddc5] text-[#5c3a21] border-2 border-[#c2a87d] py-2.5 px-3 rounded-xl font-sumo text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
+                                <i class="fas fa-user-friends"></i> 2 vs 2 (Por Equipos)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Selección de Luchadores (Humano o Bot IA) -->
+                    <div class="mb-4 text-left">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-sumo uppercase text-[#5c3a21] font-bold">Luchadores en el Dohyō (Haz clic para cambiar Humano / Bot)</label>
+                            <span class="text-[11px] text-emerald-700 font-bold"><i class="fas fa-gamepad mr-1"></i>Soporta 4 Mandos</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <!-- Luchador 1 -->
+                            <div class="flex items-center justify-between bg-[#f5ead6] border-2 border-[#d4b483] rounded-xl p-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-[#e63946] border-2 border-white shadow"></span>
+                                    <div>
+                                        <div class="font-sumo text-xs font-bold text-[#991b1b]">SUMO ROJO (J1) <span id="teamTag0" class="hidden text-[9px] bg-red-200 text-red-900 px-1.5 py-0.5 rounded ml-1">EQ. ROJO</span></div>
+                                        <div class="text-[10px] text-[#6e472b] font-semibold">Mover: <kbd class="bg-white px-1 rounded border">WASD</kbd> • Empuje: <kbd class="bg-white px-1 rounded border">Espacio</kbd></div>
+                                    </div>
+                                </div>
+                                <button data-slot="0" class="slot-toggle btn-dojo px-3 py-1 rounded-lg font-sumo text-xs font-bold bg-[#e63946] text-white">
+                                    HUMANO
+                                </button>
+                            </div>
+
+                            <!-- Luchador 2 -->
+                            <div class="flex items-center justify-between bg-[#f5ead6] border-2 border-[#d4b483] rounded-xl p-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-[#2563eb] border-2 border-white shadow"></span>
+                                    <div>
+                                        <div class="font-sumo text-xs font-bold text-[#1e40af]">SUMO AZUL (J2) <span id="teamTag1" class="hidden text-[9px] bg-red-200 text-red-900 px-1.5 py-0.5 rounded ml-1">EQ. ROJO</span></div>
+                                        <div class="text-[10px] text-[#6e472b] font-semibold">Mover: <kbd class="bg-white px-1 rounded border">Flechas</kbd> • Empuje: <kbd class="bg-white px-1 rounded border">Enter</kbd></div>
+                                    </div>
+                                </div>
+                                <button data-slot="1" class="slot-toggle btn-dojo px-3 py-1 rounded-lg font-sumo text-xs font-bold bg-[#2563eb] text-white">
+                                    HUMANO
+                                </button>
+                            </div>
+
+                            <!-- Luchador 3 -->
+                            <div class="flex items-center justify-between bg-[#f5ead6] border-2 border-[#d4b483] rounded-xl p-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-[#16a34a] border-2 border-white shadow"></span>
+                                    <div>
+                                        <div class="font-sumo text-xs font-bold text-[#166534]">SUMO VERDE (J3) <span id="teamTag2" class="hidden text-[9px] bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded ml-1">EQ. AZUL</span></div>
+                                        <div class="text-[10px] text-[#6e472b] font-semibold">Mover: <kbd class="bg-white px-1 rounded border">IJKL</kbd> • Empuje: <kbd class="bg-white px-1 rounded border">O / U</kbd></div>
+                                    </div>
+                                </div>
+                                <button data-slot="2" class="slot-toggle btn-dojo px-3 py-1 rounded-lg font-sumo text-xs font-bold bg-[#16a34a] text-white">
+                                    HUMANO
+                                </button>
+                            </div>
+
+                            <!-- Luchador 4 -->
+                            <div class="flex items-center justify-between bg-[#f5ead6] border-2 border-[#d4b483] rounded-xl p-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-4 h-4 rounded-full bg-[#f59e0b] border-2 border-white shadow"></span>
+                                    <div>
+                                        <div class="font-sumo text-xs font-bold text-[#92400e]">SUMO ORO (J4) <span id="teamTag3" class="hidden text-[9px] bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded ml-1">EQ. AZUL</span></div>
+                                        <div class="text-[10px] text-[#6e472b] font-semibold">Mover: <kbd class="bg-white px-1 rounded border">TFGH / Num</kbd> • Empuje: <kbd class="bg-white px-1 rounded border">R / 0</kbd></div>
+                                    </div>
+                                </div>
+                                <button data-slot="3" class="slot-toggle btn-dojo px-3 py-1 rounded-lg font-sumo text-xs font-bold bg-[#f59e0b] text-white">
+                                    HUMANO
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ítems Tradicionales del Dojo -->
+                    <div class="grid grid-cols-3 gap-2 mb-5 bg-[#f2e2c4] border-2 border-[#d4b483] rounded-xl p-2.5 text-xs">
+                        <div class="flex items-center justify-center gap-1.5 text-[#7c2d12]">
+                            <span class="text-base">🍚</span> <span><b>Chankonabe:</b> Súper Gordo X2</span>
+                        </div>
+                        <div class="flex items-center justify-center gap-1.5 text-[#14532d]">
+                            <span class="text-base">🍵</span> <span><b>Té Matcha:</b> Energía Lista</span>
+                        </div>
+                        <div class="flex items-center justify-center gap-1.5 text-[#991b1b]">
+                            <span class="text-base">🏮</span> <span><b>Daruma:</b> Panza Rebote</span>
+                        </div>
+                    </div>
+
+                    <!-- Botón de Comenzar -->
+                    <button id="btnStartTournament" class="btn-dojo w-full py-3.5 rounded-2xl font-sumo font-bold text-base sm:text-lg tracking-wider bg-gradient-to-b from-[#e63946] to-[#b91c1c] text-white border-2 border-[#7f1d1d] flex items-center justify-center gap-2">
+                        <i class="fas fa-drum"></i> <span id="btnStartLabel">¡HAKKEYOI! COMENZAR TORNEO</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- MODAL DE GUÍA PARA SUBIR A GITHUB PAGES -->
+            <div id="githubModal" class="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-30 opacity-0 pointer-events-none transition-opacity duration-300 overflow-y-auto">
+                <div class="max-w-lg w-full parchment-card border-4 border-[#6e4226] rounded-3xl p-5 text-left my-auto">
+                    <div class="flex items-center justify-between border-b-2 border-[#d4b483] pb-3 mb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fab fa-github text-2xl text-[#3b2314]"></i>
+                            <h3 class="font-sumo text-lg font-bold text-[#3b2314]">Subir a GitHub Pages y Compartir</h3>
+                        </div>
+                        <button id="btnCloseGithub" class="text-[#6e472b] hover:text-[#2d1a10] text-lg px-2">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 text-xs sm:text-sm text-[#4a2c18]">
+                        <p>Este juego está contenido en <b>un solo archivo HTML</b> sin imágenes externas, ideal para subirlo gratis a GitHub Pages y mandar el link a tus amigos:</p>
+                        <ol class="list-decimal list-inside space-y-2 bg-[#f5ead6] p-3.5 rounded-xl border-2 border-[#d4b483] text-xs font-medium">
+                            <li>Guarda este código en tu PC con el nombre exacto <code class="bg-amber-200/80 text-amber-950 px-1.5 py-0.5 rounded font-bold">index.html</code>.</li>
+                            <li>Entra a <b>github.com</b>, crea un repositorio público nuevo (por ejemplo: <code class="bg-amber-200/80 px-1 rounded">torneo-sumo</code>) y sube el archivo <code class="font-bold">index.html</code>.</li>
+                            <li>Dentro del repositorio, ve a <b>Settings</b> &rarr; sección <b>Pages</b> (columna izquierda).</li>
+                            <li>En <b>Branch</b> elige <code class="font-bold text-emerald-800">main</code> y presiona <b>Save</b>.</li>
+                            <li>En 1 minuto GitHub te dará tu link <code class="bg-amber-200/80 px-1 rounded">https://tu-usuario.github.io/torneo-sumo/</code> listo para compartir.</li>
+                        </ol>
+                    </div>
+
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button id="btnCopyFromModal" class="btn-dojo bg-emerald-600 text-white px-4 py-2 rounded-xl font-sumo text-xs font-bold flex items-center gap-1.5">
+                            <i class="fas fa-link"></i> Copiar Link Actual
+                        </button>
+                        <button id="btnCloseGithubBottom" class="btn-dojo bg-[#6e4226] text-white px-5 py-2 rounded-xl font-sumo text-xs font-bold">
+                            CERRAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- BARRA INFERIOR DE CONTROLES -->
+    <footer class="w-full max-w-[940px] mt-1">
+        <div class="wood-panel rounded-xl px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="flex flex-wrap items-center gap-3 font-medium">
+                <span><strong class="text-rose-300">J1 (Rojo):</strong> WASD + Espacio</span>
+                <span><strong class="text-sky-300">J2 (Azul):</strong> Flechas + Enter</span>
+                <span><strong class="text-emerald-300">J3 (Verde):</strong> IJKL + O</span>
+                <span><strong class="text-amber-300">J4 (Oro):</strong> TFGH + R</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btnTouchDash" class="sm:hidden px-3 py-1 rounded-lg bg-[#e63946] text-white font-sumo font-bold text-xs border border-white">
+                    ¡EMPUJÓN J1!
+                </button>
+                <span class="text-amber-200/80 hidden md:inline">Pausa: <kbd class="px-1.5 py-0.5 bg-[#361e10] border border-[#8c5838] rounded text-white">P</kbd></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * SINTETIZADOR DE SONIDO TRADICIONAL JAPONÉS (WEB AUDIO API)
+         * Tambores Taiko profundos, palmadas de sumo (Tsuppari), Gong de inicio/fin y exclamaciones.
+         */
+        class DojoAudio {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            // Golpe de Tambor Taiko + Choque de barrigas
+            playBellyBump(force = 1) {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    const startFreq = 115 + Math.min(force * 12, 90);
+                    osc.frequency.setValueAtTime(startFreq, now);
+                    osc.frequency.exponentialRampToValueAtTime(38, now + 0.16);
+
+                    const vol = Math.min(0.45, 0.18 + force * 0.03);
+                    gain.gain.setValueAtTime(vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.16);
+                } catch (e) {}
+            }
+
+            // Manotazo / Empujón Tsuppari (Dash)
+            playTsuppariDash() {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(310, now + 0.09);
+
+                    gain.gain.setValueAtTime(0.24, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.11);
+                } catch (e) {}
+            }
+
+            // Caída fuera del anillo de paja
+            playRingOut() {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(320, now);
+                    osc.frequency.exponentialRampToValueAtTime(55, now + 0.38);
+
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.38);
+                } catch (e) {}
+            }
+
+            // Comer Chankonabe / PowerUp
+            playEatPowerUp() {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.07);
+
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } catch (e) {}
+            }
+
+            // Gong / Tambores de Victoria
+            playGongVictory() {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    // Escala pentatónica japonesa
+                    const notes = [293.66, 329.63, 392.00, 440.00, 587.33];
+                    notes.forEach((f, idx) => {
+                        const now = this.ctx.currentTime + idx * 0.09;
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(f, now);
+                        gain.gain.setValueAtTime(0.24, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.32);
+                    });
+                } catch (e) {}
+            }
+        }
+
+        /**
+         * CONFIGURACIÓN DEL DOHYŌ Y ESTADO DEL JUEGO
+         */
+        const canvas = document.getElementById('sumoCanvas');
+        const ctx = canvas.getContext('2d');
+        const dojoContainer = document.getElementById('dojoContainer');
+        const sfx = new DojoAudio();
+
+        const W = 940;
+        const H = 588;
+        const CENTER_X = W / 2;
+        const CENTER_Y = H / 2;
+        const INITIAL_RING_RADIUS = 246;
+        const MIN_RING_RADIUS = 98;
+        const WIN_SCORE = 5;
+
+        let game = {
+            state: 'lobby', // 'lobby', 'playing', 'roundEnd', 'matchOver'
+            mode: 'ffa',    // 'ffa' (1v1v1v1) o 'teams' (2v2)
+            ringRadius: INITIAL_RING_RADIUS,
+            targetRingRadius: INITIAL_RING_RADIUS,
+            shrinkTimer: 6.5, // Segundos hasta que el borde ceda un poco
+            teamScores: [0, 0],
+            itemSpawnTimer: 3.5
+        };
+
+        // Definición de los 4 Luchadores de Sumo
+        const SUMO_DEFS = [
+            {
+                id: 0,
+                name: 'SUMO ROJO',
+                shortName: 'J1',
+                mawashiColor: '#e63946',
+                mawashiDark: '#991b1b',
+                skinColor: '#ffdbb5',
+                team: 0,
+                isBot: false,
+                spawnAngle: Math.PI * 1.25,
+                keys: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', dash1: 'Space', dash2: 'KeyC' }
+            },
+            {
+                id: 1,
+                name: 'SUMO AZUL',
+                shortName: 'J2',
+                mawashiColor: '#2563eb',
+                mawashiDark: '#1e3a8a',
+                skinColor: '#fbd3a7',
+                team: 0,
+                isBot: false,
+                spawnAngle: Math.PI * 0.25,
+                keys: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', dash1: 'Enter', dash2: 'ShiftRight' }
+            },
+            {
+                id: 2,
+                name: 'SUMO VERDE',
+                shortName: 'J3',
+                mawashiColor: '#16a34a',
+                mawashiDark: '#14532d',
+                skinColor: '#ffdfc0',
+                team: 1,
+                isBot: false,
+                spawnAngle: Math.PI * 0.75,
+                keys: { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL', dash1: 'KeyO', dash2: 'KeyU' }
+            },
+            {
+                id: 3,
+                name: 'SUMO ORO',
+                shortName: 'J4',
+                mawashiColor: '#f59e0b',
+                mawashiDark: '#92400e',
+                skinColor: '#f8ce9f',
+                team: 1,
+                isBot: false,
+                spawnAngle: Math.PI * 1.75,
+                keys: { up: 'KeyT', down: 'KeyG', left: 'KeyF', right: 'KeyH', dash1: 'KeyR', dash2: 'Numpad0' }
+            }
+        ];
+
+        let wrestlers = [];
+        let dustPuffs = [];
+        let impactRings = [];
+        let items = [];
+        let sakuraPetals = [];
+
+        // Crear pétalos de cerezo (Sakura) decorativos flotando suavemente
+        for (let i = 0; i < 28; i++) {
+            sakuraPetals.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                size: 4 + Math.random() * 4,
+                vx: 0.3 + Math.random() * 0.5,
+                vy: 0.4 + Math.random() * 0.6,
+                rot: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.03
+            });
+        }
+
+        /**
+         * INTERPOLACIÓN SUAVE DE ÁNGULOS PARA GIROS FLUIDOS
+         */
+        function lerpAngle(current, target, t) {
+            let diff = target - current;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            return current + diff * Math.min(1, t);
+        }
+
+        /**
+         * INICIALIZACIÓN DE LOS LUCHADORES DE SUMO
+         */
+        function initWrestlers(resetScores = false) {
+            const startDist = 115;
+            wrestlers = SUMO_DEFS.map((def, idx) => {
+                const prevScore = (!resetScores && wrestlers[idx]) ? wrestlers[idx].score : 0;
+                return {
+                    id: def.id,
+                    name: def.name,
+                    shortName: def.shortName,
+                    mawashiColor: def.mawashiColor,
+                    mawashiDark: def.mawashiDark,
+                    skinColor: def.skinColor,
+                    team: def.team,
+                    isBot: def.isBot,
+                    keys: def.keys,
+                    score: prevScore,
+                    x: CENTER_X + Math.cos(def.spawnAngle) * startDist,
+                    y: CENTER_Y + Math.sin(def.spawnAngle) * startDist,
+                    vx: 0,
+                    vy: 0,
+                    // Físicas separadas de control directo vs knockback para máxima fluidez
+                    moveVx: 0,
+                    moveVy: 0,
+                    knockVx: 0,
+                    knockVy: 0,
+                    radius: 28,
+                    baseRadius: 28,
+                    mass: 1.0,
+                    angle: def.spawnAngle + Math.PI,
+                    walkCycle: Math.random() * 10,
+                    squashX: 1,
+                    squashY: 1,
+                    armExtend: 0,      // Animación de brazos al empujar (Tsuppari)
+                    expressionTimer: 0, // >0 cara de sorpresa al ser golpeado
+                    alive: true,
+                    fallScale: 1,
+                    boostCooldown: 0,
+                    maxBoostCooldown: 1.4, // Segundos
+                    dashTimer: 0,
+                    powerUp: null, // 'chanko' (Gordo X2), 'daruma' (Rebote)
+                    powerUpTimer: 0,
+                    dustCooldown: 0
+                };
+            });
+            updateHUD();
+        }
+
+        function startRound() {
+            game.ringRadius = INITIAL_RING_RADIUS;
+            game.targetRingRadius = INITIAL_RING_RADIUS;
+            game.shrinkTimer = 6.0;
+            game.itemSpawnTimer = 3.0;
+            items = [];
+            impactRings = [];
+            dustPuffs = [];
+            initWrestlers(false);
+            game.state = 'playing';
+            document.getElementById('roundBanner').classList.add('opacity-0');
+        }
+
+        function startTournament() {
+            sfx.init();
+            game.teamScores = [0, 0];
+            initWrestlers(true);
+            startRound();
+            document.getElementById('lobbyOverlay').classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        /**
+         * EFECTOS DE POLVO DE ARCILLA Y ONDAS DE IMPACTO
+         */
+        function spawnClayDust(x, y, count = 8, speedScale = 1, color = 'rgba(218, 182, 135, 0.75)') {
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = (0.8 + Math.random() * 3.2) * speedScale;
+                dustPuffs.push({
+                    x, y,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    size: 4 + Math.random() * 6,
+                    alpha: 0.85,
+                    decay: 0.025 + Math.random() * 0.02,
+                    color
+                });
+            }
+        }
+
+        function spawnImpactWave(x, y, maxR = 58, color = '#fff8eb') {
+            impactRings.push({
+                x, y,
+                radius: 12,
+                maxRadius: maxR,
+                alpha: 0.85,
+                color
+            });
+        }
+
+        function triggerDojoShake() {
+            dojoContainer.classList.remove('shake-dojo');
+            void dojoContainer.offsetWidth;
+            dojoContainer.classList.add('shake-dojo');
+        }
+
+        /**
+         * APARICIÓN DE COMIDA Y AMULETOS EN EL DOHYŌ
+         */
+        function spawnDojoItem() {
+            if (items.length >= 2) return;
+            const catalog = [
+                { type: 'chanko', label: '¡SÚPER GORDO!', icon: '🍚', color: '#ea580c' },
+                { type: 'tea',    label: '¡ENERGÍA!',     icon: '🍵', color: '#16a34a' },
+                { type: 'daruma', label: '¡PANZA REBOTE!', icon: '🏮', color: '#dc2626' }
+            ];
+            const pick = catalog[Math.floor(Math.random() * catalog.length)];
+            const safeR = Math.max(30, game.ringRadius - 65);
+            const ang = Math.random() * Math.PI * 2;
+            const dist = Math.random() * safeR;
+
+            items.push({
+                x: CENTER_X + Math.cos(ang) * dist,
+                y: CENTER_Y + Math.sin(ang) * dist,
+                radius: 18,
+                type: pick.type,
+                label: pick.label,
+                icon: pick.icon,
+                color: pick.color,
+                bob: 0
+            });
+        }
+
+        /**
+         * EMPUJÓN DE SUMO (TSUPPARI DASH)
+         */
+        function performSumoDash(w, inputX, inputY) {
+            if (w.boostCooldown > 0 || !w.alive) return;
+
+            let dx = inputX;
+            let dy = inputY;
+            const mag = Math.hypot(dx, dy);
+
+            if (mag < 0.1) {
+                dx = Math.cos(w.angle);
+                dy = Math.sin(w.angle);
+            } else {
+                dx /= mag;
+                dy /= mag;
+                w.angle = Math.atan2(dy, dx);
+            }
+
+            // Impulso potente y controlado hacia adelante
+            const dashForce = 11.5;
+            w.knockVx += dx * dashForce;
+            w.knockVy += dy * dashForce;
+            w.dashTimer = 0.24; // Segundos de embestida activa
+            w.boostCooldown = w.maxBoostCooldown;
+
+            // Deformación elástica de la barriga y extensión de brazos
+            w.squashX = 1.28;
+            w.squashY = 0.78;
+            w.armExtend = 1.0;
+
+            sfx.playTsuppariDash();
+            spawnClayDust(w.x - dx * w.radius, w.y - dy * w.radius, 12, 1.3);
+            spawnImpactWave(w.x, w.y, 48, w.mawashiColor);
+        }
+
+        /**
+         * INTELIGENCIA ARTIFICIAL DE LOS SUMOS BOT
+         */
+        function computeBotInput(w, dt) {
+            const distFromCenter = Math.hypot(w.x - CENTER_X, w.y - CENTER_Y);
+            const dangerZone = game.ringRadius * 0.72;
+
+            let dirX = 0;
+            let dirY = 0;
+
+            // 1. Si está cerca de las balas de paja exteriores, volver al centro
+            if (distFromCenter > dangerZone) {
+                dirX = CENTER_X - w.x;
+                dirY = CENTER_Y - w.y;
+                if (distFromCenter > game.ringRadius * 0.84 && w.boostCooldown <= 0) {
+                    performSumoDash(w, dirX, dirY);
+                }
+            } else {
+                // 2. Buscar comida cercana o al oponente más próximo
+                let target = null;
+                let minDist = Infinity;
+
+                items.forEach(it => {
+                    const d = Math.hypot(it.x - w.x, it.y - w.y);
+                    if (d < 120 && d < minDist) {
+                        minDist = d;
+                        target = it;
+                    }
+                });
+
+                if (!target) {
+                    wrestlers.forEach(other => {
+                        if (other.id === w.id || !other.alive) return;
+                        if (game.mode === 'teams' && other.team === w.team) return;
+                        const d = Math.hypot(other.x - w.x, other.y - w.y);
+                        if (d < minDist) {
+                            minDist = d;
+                            target = other;
+                        }
+                    });
+                }
+
+                if (target) {
+                    dirX = target.x - w.x;
+                    dirY = target.y - w.y;
+                    // Embestir si tiene a un rival enfrente
+                    if (minDist < 115 && minDist > 42 && w.boostCooldown <= 0 && Math.random() < 4.5 * dt) {
+                        performSumoDash(w, dirX, dirY);
+                    }
+                }
+            }
+
+            const mag = Math.hypot(dirX, dirY);
+            if (mag > 0.01) {
+                return { x: (dirX / mag) * 0.9, y: (dirY / mag) * 0.9 };
+            }
+            return { x: 0, y: 0 };
+        }
+
+        /**
+         * CONTROLES DE TECLADO, RATÓN Y MANDOS
+         */
+        const keysDown = {};
+
+        window.addEventListener('keydown', (e) => {
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+            }
+            keysDown[e.code] = true;
+
+            if (e.code === 'KeyP' && game.state === 'playing') {
+                openLobbyModal();
+            }
+
+            if (game.state === 'playing') {
+                wrestlers.forEach(w => {
+                    if (!w.isBot && w.alive) {
+                        if (e.code === w.keys.dash1 || e.code === w.keys.dash2) {
+                            const inp = getHumanInputVector(w);
+                            performSumoDash(w, inp.x, inp.y);
+                        }
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keysDown[e.code] = false;
+        });
+
+        function getHumanInputVector(w) {
+            let dx = 0;
+            let dy = 0;
+
+            if (keysDown[w.keys.up]) dy -= 1;
+            if (keysDown[w.keys.down]) dy += 1;
+            if (keysDown[w.keys.left]) dx -= 1;
+            if (keysDown[w.keys.right]) dx += 1;
+
+            // Teclado numérico alternativo para J4
+            if (w.id === 3) {
+                if (keysDown['Numpad8']) dy -= 1;
+                if (keysDown['Numpad5']) dy += 1;
+                if (keysDown['Numpad4']) dx -= 1;
+                if (keysDown['Numpad6']) dx += 1;
+            }
+
+            // Soporte Gamepad API
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = pads[w.id];
+            if (gp) {
+                const ax = gp.axes[0] || 0;
+                const ay = gp.axes[1] || 0;
+                if (Math.hypot(ax, ay) > 0.2) {
+                    dx += ax;
+                    dy += ay;
+                }
+                if (gp.buttons[0] && gp.buttons[0].pressed) {
+                    performSumoDash(w, dx, dy);
+                }
+            }
+
+            // Soporte Táctil / Ratón para Jugador 1
+            if (w.id === 0 && pointerPos) {
+                const tx = pointerPos.x - w.x;
+                const ty = pointerPos.y - w.y;
+                if (Math.hypot(tx, ty) > 12) {
+                    dx += tx;
+                    dy += ty;
+                }
+            }
+
+            const mag = Math.hypot(dx, dy);
+            if (mag > 0.01) {
+                return { x: dx / mag, y: dy / mag };
+            }
+            return { x: 0, y: 0 };
+        }
+
+        let pointerPos = null;
+        canvas.addEventListener('pointerdown', (e) => {
+            if (game.state !== 'playing') return;
+            const rect = canvas.getBoundingClientRect();
+            pointerPos = {
+                x: (e.clientX - rect.left) * (W / rect.width),
+                y: (e.clientY - rect.top) * (H / rect.height)
+            };
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (!pointerPos || game.state !== 'playing') return;
+            const rect = canvas.getBoundingClientRect();
+            pointerPos = {
+                x: (e.clientX - rect.left) * (W / rect.width),
+                y: (e.clientY - rect.top) * (H / rect.height)
+            };
+        });
+        window.addEventListener('pointerup', () => { pointerPos = null; });
+
+        document.getElementById('btnTouchDash').addEventListener('click', () => {
+            if (wrestlers[0] && wrestlers[0].alive) {
+                performSumoDash(wrestlers[0], Math.cos(wrestlers[0].angle), Math.sin(wrestlers[0].angle));
+            }
+        });
+
+        /**
+         * COLISIONES ENTRE BARRIGAS DE SUMO (CON REBOTE ELÁSTICO Y ANIMACIÓN)
+         */
+        function resolveSumoCollisions() {
+            for (let i = 0; i < wrestlers.length; i++) {
+                for (let j = i + 1; j < wrestlers.length; j++) {
+                    const w1 = wrestlers[i];
+                    const w2 = wrestlers[j];
+                    if (!w1.alive || !w2.alive) continue;
+
+                    const dx = w2.x - w1.x;
+                    const dy = w2.y - w1.y;
+                    const dist = Math.hypot(dx, dy);
+                    const minDist = w1.radius + w2.radius;
+
+                    if (dist < minDist && dist > 0) {
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+
+                        // Separación inmediata limpia para evitar enganches
+                        const overlap = (minDist - dist) * 0.52;
+                        w1.x -= nx * overlap;
+                        w1.y -= ny * overlap;
+                        w2.x += nx * overlap;
+                        w2.y += ny * overlap;
+
+                        // Velocidades totales actuales
+                        const v1x = w1.moveVx + w1.knockVx;
+                        const v1y = w1.moveVy + w1.knockVy;
+                        const v2x = w2.moveVx + w2.knockVx;
+                        const v2y = w2.moveVy + w2.knockVy;
+
+                        const rvx = v2x - v1x;
+                        const rvy = v2y - v1y;
+                        const normalVel = rvx * nx + rvy * ny;
+
+                        if (normalVel < 0) {
+                            // Peso efectivo de cada luchador (El Chankonabe duplica el peso)
+                            const m1 = w1.mass * (w1.powerUp === 'chanko' ? 2.1 : 1.0) * (w1.dashTimer > 0 ? 1.45 : 1.0);
+                            const m2 = w2.mass * (w2.powerUp === 'chanko' ? 2.1 : 1.0) * (w2.dashTimer > 0 ? 1.45 : 1.0);
+
+                            let bounciness = 1.25;
+                            if (w1.dashTimer > 0 || w2.dashTimer > 0) bounciness = 1.65;
+                            if (w1.powerUp === 'daruma' || w2.powerUp === 'daruma') bounciness = 1.9;
+
+                            const impulse = -(1 + bounciness) * normalVel / (1 / m1 + 1 / m2);
+                            const impX = nx * impulse;
+                            const impY = ny * impulse;
+
+                            // Aplicar el rebote directamente al vector de knockback
+                            const minBump = 4.2;
+                            w1.knockVx -= (impX + nx * minBump) / m1;
+                            w1.knockVy -= (impY + ny * minBump) / m1;
+                            w2.knockVx += (impX + nx * minBump) / m2;
+                            w2.knockVy += (impY + ny * minBump) / m2;
+
+                            // Efecto Squash & Stretch en las barrigas y caras de sorpresa
+                            w1.squashX = 0.76;
+                            w1.squashY = 1.26;
+                            w2.squashX = 0.76;
+                            w2.squashY = 1.26;
+                            w1.expressionTimer = 0.35;
+                            w2.expressionTimer = 0.35;
+
+                            const hitX = (w1.x + w2.x) / 2;
+                            const hitY = (w1.y + w2.y) / 2;
+                            const hitForce = Math.abs(normalVel);
+
+                            sfx.playBellyBump(hitForce);
+                            spawnClayDust(hitX, hitY, 14, 1.25, 'rgba(255, 248, 231, 0.85)');
+                            spawnImpactWave(hitX, hitY, 45 + hitForce * 2.5, '#fff8eb');
+
+                            if (hitForce > 5.5 || w1.dashTimer > 0 || w2.dashTimer > 0) {
+                                triggerDojoShake();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * VERIFICAR GANADOR DE LA RONDA
+         */
+        function evaluateRoundOver() {
+            const alive = wrestlers.filter(w => w.alive);
+
+            if (game.mode === 'ffa') {
+                if (alive.length <= 1) {
+                    game.state = 'roundEnd';
+                    const winner = alive[0];
+                    if (winner) {
+                        winner.score++;
+                        sfx.playGongVictory();
+                        showRoundBanner(`¡${winner.name} GANA!`, `Victoria para ${winner.shortName} (${winner.score}/${WIN_SCORE})`, winner.mawashiColor);
+                    } else {
+                        showRoundBanner('¡EMPATE EN EL DOHYŌ!', 'Todos cayeron fuera del anillo', '#6e4226');
+                    }
+                    updateHUD();
+                    proceedAfterRound();
+                }
+            } else {
+                const team0Alive = alive.some(w => w.team === 0);
+                const team1Alive = alive.some(w => w.team === 1);
+
+                if (!team0Alive || !team1Alive) {
+                    game.state = 'roundEnd';
+                    if (team0Alive && !team1Alive) {
+                        game.teamScores[0]++;
+                        wrestlers[0].score = game.teamScores[0];
+                        wrestlers[1].score = game.teamScores[0];
+                        sfx.playGongVictory();
+                        showRoundBanner('¡EQUIPO ROJO (J1+J2) GANA!', `Marcador Equipos: ${game.teamScores[0]} a ${game.teamScores[1]}`, '#e63946');
+                    } else if (team1Alive && !team0Alive) {
+                        game.teamScores[1]++;
+                        wrestlers[2].score = game.teamScores[1];
+                        wrestlers[3].score = game.teamScores[1];
+                        sfx.playGongVictory();
+                        showRoundBanner('¡EQUIPO AZUL (J3+J4) GANA!', `Marcador Equipos: ${game.teamScores[0]} a ${game.teamScores[1]}`, '#16a34a');
+                    } else {
+                        showRoundBanner('¡EMPATE DE EQUIPOS!', 'Ambos equipos salieron del anillo', '#6e4226');
+                    }
+                    updateHUD();
+                    proceedAfterRound();
+                }
+            }
+        }
+
+        function showRoundBanner(title, subtitle, colorHex) {
+            const banner = document.getElementById('roundBanner');
+            const wText = document.getElementById('roundWinnerText');
+            const sText = document.getElementById('roundSubText');
+            wText.textContent = title;
+            wText.style.color = colorHex;
+            sText.textContent = subtitle;
+            banner.classList.remove('opacity-0');
+        }
+
+        function proceedAfterRound() {
+            setTimeout(() => {
+                const champFFA = game.mode === 'ffa' ? wrestlers.find(w => w.score >= WIN_SCORE) : null;
+                const champTeam = game.mode === 'teams' ? (game.teamScores[0] >= WIN_SCORE ? 0 : (game.teamScores[1] >= WIN_SCORE ? 1 : null)) : null;
+
+                if (champFFA || champTeam !== null) {
+                    game.state = 'matchOver';
+                    const winHeading = champFFA
+                        ? `¡YOKOZUNA ${champFFA.name}!`
+                        : (champTeam === 0 ? '¡CAMPEÓN EQUIPO ROJO (J1 & J2)!' : '¡CAMPEÓN EQUIPO AZUL (J3 & J4)!');
+                    document.getElementById('lobbyBadge').textContent = 'GRAN CAMPEÓN DEL DOJO';
+                    document.getElementById('lobbyTitle').textContent = winHeading;
+                    document.getElementById('lobbySubtitle').textContent = '¡Ha alcanzado las 5 victorias y recibe el título de Gran Yokozuna!';
+                    document.getElementById('btnStartLabel').textContent = '¡JUGAR NUEVO TORNEO!';
+                    document.getElementById('roundBanner').classList.add('opacity-0');
+                    document.getElementById('lobbyOverlay').classList.remove('opacity-0', 'pointer-events-none');
+                } else {
+                    startRound();
+                }
+            }, 2200);
+        }
+
+        /**
+         * ACTUALIZACIÓN FLUIDA CON DELTA-TIME
+         */
+        let lastTime = performance.now();
+
+        function updateDojo(now) {
+            const rawDt = (now - lastTime) / 1000;
+            lastTime = now;
+            // Limitar dt para evitar saltos si el usuario cambia de pestaña
+            const dt = Math.min(0.05, Math.max(0.001, rawDt));
+            const frameScale = dt * 60; // Escala normalizada a 60 FPS para respuesta ultra fluida
+
+            // Actualizar nubes de polvo
+            for (let i = dustPuffs.length - 1; i >= 0; i--) {
+                const p = dustPuffs[i];
+                p.x += p.vx * frameScale;
+                p.y += p.vy * frameScale;
+                p.vx *= Math.pow(0.92, frameScale);
+                p.vy *= Math.pow(0.92, frameScale);
+                p.size += 0.15 * frameScale;
+                p.alpha -= p.decay * frameScale;
+                if (p.alpha <= 0) dustPuffs.splice(i, 1);
+            }
+
+            // Actualizar ondas de choque
+            for (let i = impactRings.length - 1; i >= 0; i--) {
+                const ir = impactRings[i];
+                ir.radius += (ir.maxRadius - ir.radius) * 0.22 * frameScale;
+                ir.alpha -= 0.045 * frameScale;
+                if (ir.alpha <= 0) impactRings.splice(i, 1);
+            }
+
+            // Actualizar pétalos de cerezo
+            sakuraPetals.forEach(sp => {
+                sp.x += sp.vx * frameScale;
+                sp.y += sp.vy * frameScale;
+                sp.rot += sp.rotSpeed * frameScale;
+                if (sp.x > W + 15) sp.x = -15;
+                if (sp.y > H + 15) sp.y = -15;
+            });
+
+            if (game.state !== 'playing') return;
+
+            // Encogimiento gradual del Dohyō
+            game.shrinkTimer -= dt;
+            if (game.shrinkTimer <= 0) {
+                if (game.targetRingRadius > MIN_RING_RADIUS) {
+                    game.targetRingRadius = Math.max(MIN_RING_RADIUS, game.targetRingRadius - 28);
+                    spawnClayDust(CENTER_X, CENTER_Y, 10, 1.5);
+                }
+                game.shrinkTimer = 5.5;
+            }
+            game.ringRadius += (game.targetRingRadius - game.ringRadius) * 0.06 * frameScale;
+            document.getElementById('shrinkTimerText').textContent = `${Math.round((game.ringRadius / INITIAL_RING_RADIUS) * 100)}%`;
+
+            // Aparición de comida / ítems
+            game.itemSpawnTimer -= dt;
+            if (game.itemSpawnTimer <= 0) {
+                spawnDojoItem();
+                game.itemSpawnTimer = 5.0;
+            }
+
+            // Actualizar cada luchador de sumo
+            wrestlers.forEach(w => {
+                if (!w.alive) {
+                    w.fallScale = Math.max(0, w.fallScale - 0.045 * frameScale);
+                    w.x += (w.moveVx + w.knockVx) * 0.4 * frameScale;
+                    w.y += (w.moveVy + w.knockVy) * 0.4 * frameScale;
+                    return;
+                }
+
+                // Temporizadores individuales
+                if (w.boostCooldown > 0) w.boostCooldown = Math.max(0, w.boostCooldown - dt);
+                if (w.dashTimer > 0) w.dashTimer = Math.max(0, w.dashTimer - dt);
+                if (w.expressionTimer > 0) w.expressionTimer = Math.max(0, w.expressionTimer - dt);
+                if (w.dustCooldown > 0) w.dustCooldown = Math.max(0, w.dustCooldown - dt);
+
+                if (w.powerUpTimer > 0) {
+                    w.powerUpTimer -= dt;
+                    if (w.powerUpTimer <= 0) {
+                        w.powerUp = null;
+                        w.radius = w.baseRadius;
+                    }
+                }
+
+                // Recuperación elástica de la barriga y brazos hacia su forma natural
+                const targetRadius = w.powerUp === 'chanko' ? w.baseRadius * 1.32 : w.baseRadius;
+                w.radius += (targetRadius - w.radius) * 0.15 * frameScale;
+                w.squashX += (1 - w.squashX) * 0.18 * frameScale;
+                w.squashY += (1 - w.squashY) * 0.18 * frameScale;
+                w.armExtend += (0 - w.armExtend) * 0.16 * frameScale;
+
+                // Leer dirección deseada (Humano o Bot)
+                const input = w.isBot ? computeBotInput(w, dt) : getHumanInputVector(w);
+
+                // Velocidad objetivo de caminata ágil y sin resbalar como hielo
+                const maxWalkSpeed = w.powerUp === 'chanko' ? 4.3 : 4.9;
+                const targetVx = input.x * maxWalkSpeed;
+                const targetVy = input.y * maxWalkSpeed;
+
+                // Interpolación suave pero muy reactiva del movimiento voluntario
+                const responsiveness = 0.24 * frameScale;
+                w.moveVx += (targetVx - w.moveVx) * Math.min(1, responsiveness);
+                w.moveVy += (targetVy - w.moveVy) * Math.min(1, responsiveness);
+
+                // Amortiguación del vector de impulso/knockback
+                const knockDamp = Math.pow(0.89, frameScale);
+                w.knockVx *= knockDamp;
+                w.knockVy *= knockDamp;
+
+                // Velocidad final combinada
+                w.vx = w.moveVx + w.knockVx;
+                w.vy = w.moveVy + w.knockVy;
+
+                w.x += w.vx * frameScale;
+                w.y += w.vy * frameScale;
+
+                // Rotación fluida del luchador hacia donde camina
+                const inputMag = Math.hypot(input.x, input.y);
+                if (inputMag > 0.1) {
+                    const desiredAngle = Math.atan2(input.y, input.x);
+                    w.angle = lerpAngle(w.angle, desiredAngle, 0.25 * frameScale);
+                    w.walkCycle += 0.26 * frameScale;
+
+                    // Pequeñas nubecitas de polvo al dar pasos rápidos
+                    if (w.dustCooldown <= 0) {
+                        spawnClayDust(
+                            w.x - Math.cos(w.angle) * (w.radius * 0.6),
+                            w.y - Math.sin(w.angle) * (w.radius * 0.6),
+                            1, 0.45
+                        );
+                        w.dustCooldown = 0.12;
+                    }
+                }
+
+                // Recoger comida o amuletos del Dohyō
+                for (let i = items.length - 1; i >= 0; i--) {
+                    const it = items[i];
+                    if (Math.hypot(w.x - it.x, w.y - it.y) < w.radius + it.radius) {
+                        sfx.playEatPowerUp();
+                        spawnImpactWave(it.x, it.y, 45, it.color);
+                        w.squashX = 1.25;
+                        w.squashY = 1.25;
+
+                        if (it.type === 'tea') {
+                            w.boostCooldown = 0;
+                        } else if (it.type === 'chanko') {
+                            w.powerUp = 'chanko';
+                            w.powerUpTimer = 6.5;
+                        } else if (it.type === 'daruma') {
+                            w.powerUp = 'daruma';
+                            w.powerUpTimer = 6.5;
+                        }
+                        items.splice(i, 1);
+                    }
+                }
+
+                // Comprobar si salió fuera de las balas de paja (Tawara)
+                const distCenter = Math.hypot(w.x - CENTER_X, w.y - CENTER_Y);
+                if (distCenter > game.ringRadius + w.radius * 0.35) {
+                    w.alive = false;
+                    sfx.playRingOut();
+                    spawnClayDust(w.x, w.y, 22, 1.5);
+                    spawnImpactWave(w.x, w.y, 65, w.mawashiColor);
+                    evaluateRoundOver();
+                }
+
+                // Actualizar barra de Empuje en la tarjeta superior
+                const bar = document.getElementById(`hudBoost${w.id}`);
+                if (bar) {
+                    const pct = Math.round(((w.maxBoostCooldown - w.boostCooldown) / w.maxBoostCooldown) * 100);
+                    bar.style.width = `${pct}%`;
+                }
+            });
+
+            resolveSumoCollisions();
+        }
+
+        /**
+         * DIBUJADO DEL DOJO DE MADERA, ANILLO DOHYŌ Y SUMOS GORDITOS
+         */
+        function renderDojo() {
+            ctx.clearRect(0, 0, W, H);
+
+            // 1. Piso de Madera Tradicional del Dojo (Tablones cálidos)
+            ctx.fillStyle = '#7c4d30';
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.strokeStyle = 'rgba(52, 26, 11, 0.35)';
+            ctx.lineWidth = 2;
+            const plankHeight = 42;
+            for (let y = 0; y < H; y += plankHeight) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+
+                // Divisiones verticales alternadas de los tablones
+                const offset = (Math.floor(y / plankHeight) % 2) * 90;
+                for (let x = offset; x < W; x += 180) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y + plankHeight);
+                    ctx.stroke();
+                }
+            }
+
+            // Tatamis decorativos en las esquinas exteriores
+            drawCornerTatamis();
+
+            // 2. Base cuadrada elevada de arcilla (Dohyō-damari)
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+            ctx.beginPath();
+            ctx.arc(CENTER_X, CENTER_Y + 8, game.ringRadius + 18, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Superficie circular de arena y arcilla del Dohyō
+            const clayGrad = ctx.createRadialGradient(CENTER_X, CENTER_Y, 20, CENTER_X, CENTER_Y, game.ringRadius);
+            clayGrad.addColorStop(0, '#f3dfb9');
+            clayGrad.addColorStop(0.75, '#e2c591');
+            clayGrad.addColorStop(1, '#cfa96b');
+
+            ctx.beginPath();
+            ctx.arc(CENTER_X, CENTER_Y, game.ringRadius, 0, Math.PI * 2);
+            ctx.fillStyle = clayGrad;
+            ctx.fill();
+
+            // Círculo interior de combate y líneas Shikiri-sen (líneas de inicio donde ponen los puños)
+            ctx.strokeStyle = 'rgba(146, 98, 49, 0.35)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(CENTER_X, CENTER_Y, game.ringRadius * 0.55, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Las dos líneas blancas tradicionales Shikiri-sen en el centro
+            ctx.strokeStyle = '#fff9ed';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(CENTER_X - 28, CENTER_Y - 22);
+            ctx.lineTo(CENTER_X - 28, CENTER_Y + 22);
+            ctx.moveTo(CENTER_X + 28, CENTER_Y - 22);
+            ctx.lineTo(CENTER_X + 28, CENTER_Y + 22);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#8c2d19';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CENTER_X - 31, CENTER_Y - 25, 6, 50);
+            ctx.strokeRect(CENTER_X + 25, CENTER_Y - 25, 6, 50);
+
+            // 3. Borde de fardos de paja trenzada (Tawara) alrededor del Dohyō
+            const numBales = 36;
+            const baleWarning = game.shrinkTimer < 1.3 && game.targetRingRadius > MIN_RING_RADIUS;
+            for (let i = 0; i < numBales; i++) {
+                const ang1 = (i / numBales) * Math.PI * 2;
+                const ang2 = ((i + 0.82) / numBales) * Math.PI * 2;
+                const midAng = (ang1 + ang2) / 2;
+                const bx = CENTER_X + Math.cos(midAng) * game.ringRadius;
+                const by = CENTER_Y + Math.sin(midAng) * game.ringRadius;
+
+                ctx.save();
+                ctx.translate(bx, by);
+                ctx.rotate(midAng + Math.PI / 2);
+
+                // Fardo de paja
+                ctx.fillStyle = (baleWarning && Math.floor(performance.now() / 120) % 2 === 0) ? '#ef4444' : '#d99b43';
+                ctx.strokeStyle = '#784717';
+                ctx.lineWidth = 2;
+                const baleW = (2 * Math.PI * game.ringRadius) / numBales * 0.92;
+                ctx.beginPath();
+                ctx.roundRect(-baleW / 2, -6, baleW, 12, 5);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.restore();
+
+            // 4. Dibujar Nubes de Polvo de Arcilla
+            dustPuffs.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 5. Dibujar Ítems del Dojo (Chankonabe, Té Matcha, Daruma)
+            items.forEach(it => {
+                it.bob += 0.08;
+                const offsetY = Math.sin(it.bob) * 3;
+                ctx.save();
+                ctx.translate(it.x, it.y + offsetY);
+
+                // Sombra
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(0, 6 - offsetY, it.radius * 0.9, it.radius * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Plato / Base circular
+                ctx.fillStyle = '#fff9ed';
+                ctx.strokeStyle = it.color;
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, it.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Icono del ítem
+                ctx.font = '20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(it.icon, 0, 1);
+
+                // Etiqueta
+                ctx.font = '700 10px Fredoka';
+                ctx.fillStyle = '#3b2314';
+                ctx.strokeStyle = '#fff9ed';
+                ctx.lineWidth = 3;
+                ctx.strokeText(it.label, 0, -it.radius - 7);
+                ctx.fillText(it.label, 0, -it.radius - 7);
+                ctx.restore();
+            });
+
+            // 6. Dibujar Ondas de Choque
+            impactRings.forEach(ir => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ir.alpha);
+                ctx.strokeStyle = ir.color;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(ir.x, ir.y, ir.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            // 7. Dibujar Luchadores de Sumo Gordos (primero los caídos, luego los que siguen en pie)
+            const sorted = [...wrestlers].sort((a, b) => (a.alive === b.alive ? a.y - b.y : a.alive ? 1 : -1));
+            sorted.forEach(w => drawFatSumoWrestler(w));
+
+            // 8. Pétalos de Cerezo (Sakura) cayendo suavemente por encima
+            sakuraPetals.forEach(sp => {
+                ctx.save();
+                ctx.translate(sp.x, sp.y);
+                ctx.rotate(sp.rot);
+                ctx.fillStyle = 'rgba(255, 183, 197, 0.75)';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, sp.size, sp.size * 0.55, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function drawCornerTatamis() {
+            const corners = [
+                { x: 18, y: 18, w: 120, h: 70 },
+                { x: W - 138, y: 18, w: 120, h: 70 },
+                { x: 18, y: H - 88, w: 120, h: 70 },
+                { x: W - 138, y: H - 88, w: 120, h: 70 }
+            ];
+            corners.forEach((c, idx) => {
+                ctx.save();
+                ctx.fillStyle = '#8fa867';
+                ctx.strokeStyle = '#991b1b';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.roundRect(c.x, c.y, c.w, c.h, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // Cojín Zabuton del rincón
+                const zabColors = ['#e63946', '#2563eb', '#16a34a', '#f59e0b'];
+                ctx.fillStyle = zabColors[idx];
+                ctx.beginPath();
+                ctx.roundRect(c.x + 38, c.y + 15, 44, 40, 8);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        /**
+         * DIBUJADO DETALLADO DEL LUCHADOR DE SUMO GORDITO
+         */
+        function drawFatSumoWrestler(w) {
+            if (w.fallScale <= 0) return;
+
+            ctx.save();
+            ctx.translate(w.x, w.y);
+            ctx.scale(w.fallScale, w.fallScale);
+
+            // Sombra proyectada en la arcilla
+            ctx.fillStyle = 'rgba(45, 26, 16, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(0, 6, w.radius * 1.05, w.radius * 0.88, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Aura especial si tiene el Amuleto Daruma (Panza de Rebote) o Súper Gordo
+            if (w.powerUp === 'daruma') {
+                ctx.strokeStyle = '#dc2626';
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.14)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, w.radius + 9, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else if (w.powerUp === 'chanko') {
+                ctx.strokeStyle = '#ea580c';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath();
+                ctx.arc(0, 0, w.radius + 7, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Rotar en dirección al oponente y aplicar Squash & Stretch de la barriga
+            ctx.rotate(w.angle);
+            ctx.scale(w.squashX, w.squashY);
+
+            const r = w.radius;
+            const footStep = Math.sin(w.walkCycle) * 5;
+
+            // 1. Pies gorditos asomando al caminar
+            ctx.fillStyle = w.skinColor;
+            ctx.strokeStyle = '#5c3a21';
+            ctx.lineWidth = 2;
+            // Pie izquierdo
+            ctx.beginPath();
+            ctx.ellipse(footStep, -r * 0.72, r * 0.28, r * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Pie derecho
+            ctx.beginPath();
+            ctx.ellipse(-footStep, r * 0.72, r * 0.28, r * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 2. Brazos regordetes extendidos hacia adelante (animan el golpe Tsuppari)
+            const punchOffset = w.armExtend * 12;
+            ctx.fillStyle = w.skinColor;
+            // Brazo izquierdo
+            ctx.beginPath();
+            ctx.ellipse(r * 0.55 + punchOffset, -r * 0.68, r * 0.38, r * 0.25, 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Brazo derecho
+            ctx.beginPath();
+            ctx.ellipse(r * 0.55 + punchOffset, r * 0.68, r * 0.38, r * 0.25, -0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Palmas abiertas si está haciendo un empujón Tsuppari
+            if (w.armExtend > 0.2) {
+                ctx.fillStyle = '#fff8eb';
+                ctx.beginPath();
+                ctx.arc(r * 0.88 + punchOffset, -r * 0.62, 5, 0, Math.PI * 2);
+                ctx.arc(r * 0.88 + punchOffset, r * 0.62, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. Gran Barriga y Torso Redondo de Sumo
+            ctx.fillStyle = w.skinColor;
+            ctx.strokeStyle = '#5c3a21';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r * 0.96, r * 1.04, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Pliegue de la panza y ombligo en la parte delantera
+            ctx.strokeStyle = 'rgba(138, 86, 48, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(r * 0.22, 0, r * 0.55, -0.8, 0.8);
+            ctx.stroke();
+
+            // 4. Cinturón Tradicional Mawashi (Color del jugador o del equipo en 2v2)
+            const beltColor = game.mode === 'teams'
+                ? (w.team === 0 ? '#e63946' : '#2563eb')
+                : w.mawashiColor;
+
+            ctx.fillStyle = beltColor;
+            ctx.strokeStyle = '#3b2314';
+            ctx.lineWidth = 2;
+            // Faja transversal alrededor de la cintura
+            ctx.beginPath();
+            ctx.roundRect(-r * 0.52, -r * 0.98, r * 0.56, r * 1.96, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // Nudo trasero grande del Mawashi
+            ctx.fillStyle = w.mawashiColor;
+            ctx.beginPath();
+            ctx.roundRect(-r * 0.88, -r * 0.36, r * 0.38, r * 0.72, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            // Flecos decorativos (Sagari) en el frente del cinturón
+            ctx.strokeStyle = '#fff9ed';
+            ctx.lineWidth = 2;
+            for (let s = -2; s <= 2; s++) {
+                ctx.beginPath();
+                ctx.moveTo(r * 0.08, s * 6);
+                ctx.lineTo(r * 0.34, s * 6);
+                ctx.stroke();
+            }
+
+            // 5. Cabeza Redonda, Mejillas Sonrojadas y Peinado Chonmage
+            ctx.fillStyle = w.skinColor;
+            ctx.strokeStyle = '#5c3a21';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(r * 0.12, 0, r * 0.46, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Mejillas rosadas de esfuerzo
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.42)';
+            ctx.beginPath();
+            ctx.arc(r * 0.35, -r * 0.24, 4.5, 0, Math.PI * 2);
+            ctx.arc(r * 0.35, r * 0.24, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ojos expresivos (Fruncidos con determinación o abiertos en "O" al chocar)
+            ctx.fillStyle = '#1f1209';
+            if (w.expressionTimer > 0) {
+                // Ojos de sorpresa al recibir un panzazo
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(r * 0.4, -r * 0.15, 4, 0, Math.PI * 2);
+                ctx.arc(r * 0.4, r * 0.15, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#1f1209';
+                ctx.beginPath();
+                ctx.arc(r * 0.42, -r * 0.15, 1.8, 0, Math.PI * 2);
+                ctx.arc(r * 0.42, r * 0.15, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Mirada decidida de luchador de sumo
+                ctx.beginPath();
+                ctx.arc(r * 0.42, -r * 0.15, 2.4, 0, Math.PI * 2);
+                ctx.arc(r * 0.42, r * 0.15, 2.4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Cejas gruesas inclinadas
+                ctx.strokeStyle = '#1f1209';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(r * 0.48, -r * 0.26);
+                ctx.lineTo(r * 0.38, -r * 0.08);
+                ctx.moveTo(r * 0.48, r * 0.26);
+                ctx.lineTo(r * 0.38, r * 0.08);
+                ctx.stroke();
+            }
+
+            // Cabello negro tradicional japonés y moño superior (Chonmage)
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.arc(r * 0.04, 0, r * 0.36, Math.PI * 0.55, Math.PI * 1.45);
+            ctx.fill();
+
+            // Cinta blanca del moño y coleta hacia adelante
+            ctx.fillStyle = '#fff9ed';
+            ctx.fillRect(-r * 0.05, -4, 6, 8);
+
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.ellipse(r * 0.1, 0, r * 0.22, r * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            // 6. Etiqueta flotante con el nombre del jugador (J1, J2, BOT)
+            if (w.alive) {
+                ctx.save();
+                ctx.font = '700 11px Fredoka';
+                ctx.textAlign = 'center';
+                const label = w.isBot ? `${w.shortName} (BOT)` : w.shortName;
+                ctx.strokeStyle = '#2d1a10';
+                ctx.lineWidth = 3.5;
+                ctx.strokeText(label, w.x, w.y - w.radius - 10);
+                ctx.fillStyle = '#fff9ed';
+                ctx.fillText(label, w.x, w.y - w.radius - 10);
+                ctx.restore();
+            }
+        }
+
+        /**
+         * GESTIÓN DE LA INTERFAZ, MODALES Y COMPARTIR EN GITHUB
+         */
+        function updateHUD() {
+            SUMO_DEFS.forEach((def, idx) => {
+                const nameEl = document.getElementById(`hudName${idx}`);
+                const scoreEl = document.getElementById(`hudScore${idx}`);
+                const w = wrestlers[idx];
+                if (nameEl) {
+                    nameEl.textContent = def.isBot ? `${def.shortName} (BOT IA)` : `${def.shortName} (HUMANO)`;
+                }
+                if (scoreEl && w) {
+                    scoreEl.textContent = w.score;
+                }
+            });
+
+            const modeSub = document.getElementById('modeSubheader');
+            if (game.mode === 'ffa') {
+                modeSub.textContent = `TODOS CONTRA TODOS (1v1v1v1) • META: ${WIN_SCORE} VICTORIAS`;
+            } else {
+                modeSub.textContent = `EQUIPOS 2v2 (ROJO J1+J2 vs AZUL J3+J4) • META: ${WIN_SCORE} VICTORIAS`;
+            }
+        }
+
+        // Alternar Humano / Bot en cada espacio
+        document.querySelectorAll('.slot-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = parseInt(btn.getAttribute('data-slot'), 10);
+                SUMO_DEFS[slot].isBot = !SUMO_DEFS[slot].isBot;
+                if (SUMO_DEFS[slot].isBot) {
+                    btn.textContent = 'BOT IA';
+                    btn.className = 'slot-toggle btn-dojo px-3 py-1 rounded-lg font-sumo text-xs font-bold bg-[#6e4226] text-amber-100';
+                } else {
+                    btn.textContent = 'HUMANO';
+                    const colors = [
+                        'bg-[#e63946] text-white',
+                        'bg-[#2563eb] text-white',
+                        'bg-[#16a34a] text-white',
+                        'bg-[#f59e0b] text-white'
+                    ];
+                    btn.className = `slot-toggle btn-dojo px-3 py-1 rounded-lg font-sumo text-xs font-bold ${colors[slot]}`;
+                }
+                updateHUD();
+            });
+        });
+
+        // Selector de modo 1v1v1v1 vs 2v2
+        const btnFFA = document.getElementById('btnModeFFA');
+        const btnTeams = document.getElementById('btnModeTeams');
+
+        btnFFA.addEventListener('click', () => {
+            game.mode = 'ffa';
+            btnFFA.className = 'btn-dojo bg-[#e63946] text-white border-2 border-[#991b1b] py-2.5 px-3 rounded-xl font-sumo text-xs sm:text-sm font-bold flex items-center justify-center gap-2';
+            btnTeams.className = 'btn-dojo bg-[#eaddc5] text-[#5c3a21] border-2 border-[#c2a87d] py-2.5 px-3 rounded-xl font-sumo text-xs sm:text-sm font-bold flex items-center justify-center gap-2';
+            for (let i = 0; i < 4; i++) document.getElementById(`teamTag${i}`).classList.add('hidden');
+            updateHUD();
+        });
+
+        btnTeams.addEventListener('click', () => {
+            game.mode = 'teams';
+            btnTeams.className = 'btn-dojo bg-[#2563eb] text-white border-2 border-[#1e3a8a] py-2.5 px-3 rounded-xl font-sumo text-xs sm:text-sm font-bold flex items-center justify-center gap-2';
+            btnFFA.className = 'btn-dojo bg-[#eaddc5] text-[#5c3a21] border-2 border-[#c2a87d] py-2.5 px-3 rounded-xl font-sumo text-xs sm:text-sm font-bold flex items-center justify-center gap-2';
+            for (let i = 0; i < 4; i++) document.getElementById(`teamTag${i}`).classList.remove('hidden');
+            updateHUD();
+        });
+
+        function openLobbyModal() {
+            game.state = 'lobby';
+            document.getElementById('lobbyBadge').textContent = 'PAUSA / SALA DEL DOJO';
+            document.getElementById('lobbyTitle').textContent = 'GRAN TORNEO DE SUMO';
+            document.getElementById('btnStartLabel').textContent = '¡VOLVER AL DOHYŌ!';
+            document.getElementById('lobbyOverlay').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        document.getElementById('btnMenu').addEventListener('click', openLobbyModal);
+        document.getElementById('btnStartTournament').addEventListener('click', startTournament);
+
+        document.getElementById('btnSound').addEventListener('click', () => {
+            const on = sfx.toggle();
+            document.getElementById('iconSound').className = on ? 'fas fa-volume-up text-sm' : 'fas fa-volume-mute text-sm opacity-60';
+        });
+
+        // Copiar link al portapapeles
+        function copyGameLink() {
+            const temp = document.createElement('input');
+            temp.value = window.location.href;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const toast = document.getElementById('toastMsg');
+            document.getElementById('toastText').textContent = '¡Enlace copiado! Mándalo a tus amigos.';
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2800);
+        }
+
+        document.getElementById('btnShareLink').addEventListener('click', copyGameLink);
+        document.getElementById('btnCopyFromModal').addEventListener('click', copyGameLink);
+
+        // Modal GitHub Pages
+        const githubModal = document.getElementById('githubModal');
+        document.getElementById('btnGithubHelp').addEventListener('click', () => {
+            githubModal.classList.remove('opacity-0', 'pointer-events-none');
+        });
+        document.getElementById('btnCloseGithub').addEventListener('click', () => {
+            githubModal.classList.add('opacity-0', 'pointer-events-none');
+        });
+        document.getElementById('btnCloseGithubBottom').addEventListener('click', () => {
+            githubModal.classList.add('opacity-0', 'pointer-events-none');
+        });
+
+        /**
+         * BUCLE PRINCIPAL DE ANIMACIÓN
+         */
+        function gameLoop(now) {
+            updateDojo(now);
+            renderDojo();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            canvas.width = W;
+            canvas.height = H;
+            initWrestlers(true);
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
